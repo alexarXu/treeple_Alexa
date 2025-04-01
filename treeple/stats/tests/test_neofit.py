@@ -1,23 +1,19 @@
 import numpy as np
-import pandas as pd
 import pytest
-import matplotlib.pyplot as plt
-from torchvision import datasets, transforms
 import torch
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-import tqdm
+from sklearn.model_selection import train_test_split
+from torchvision import datasets, transforms
 
 from treeple.stats import NeuroExplainableOptimalFIT
 
-
-'''
+"""
 Experiments
-'''
+"""
 """Use MNIST 3/5 Dataset"""
 # load data
 transform = transforms.Compose([transforms.ToTensor()])
-mnist = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+mnist = datasets.MNIST(root="./data", train=True, download=True, transform=transform)
 indices = np.where((mnist.targets == 3) | (mnist.targets == 5))[0]
 filtered_mnist = torch.utils.data.Subset(mnist, indices)
 X_mnist = []
@@ -27,10 +23,14 @@ for image, label in filtered_mnist:
     y_mnist.append(label)
 X_mnist = np.array(X_mnist)
 y_mnist = np.array(y_mnist)
-X_train_mnist, X_temp_mnist, y_train_mnist, y_temp_mnist = train_test_split(X_mnist, y_mnist, test_size=0.4, random_state=0)
-X_val_mnist, X_test_mnist, y_val_mnist, y_test_mnist = train_test_split(X_temp_mnist, y_temp_mnist, test_size=0.5, random_state=0)
+X_train_mnist, X_temp_mnist, y_train_mnist, y_temp_mnist = train_test_split(
+    X_mnist, y_mnist, test_size=0.4, random_state=0
+)
+X_val_mnist, X_test_mnist, y_val_mnist, y_test_mnist = train_test_split(
+    X_temp_mnist, y_temp_mnist, test_size=0.5, random_state=0
+)
 
-neofit = NeuroExplainableOptimalFIT(n_estimators=5000, n_permutations=100000,clf_type="SPORF")
+neofit = NeuroExplainableOptimalFIT(n_estimators=5000, n_permutations=100000, clf_type="SPORF")
 # p_values = neofit.feat_imp_test(X_train_mnist, y_train_mnist)
 p_values, imp_features, _ = neofit.get_significant_features(X_train_mnist, y_train_mnist)
 
@@ -42,7 +42,6 @@ clf_all = RandomForestClassifier(n_estimators=500, random_state=0).fit(X_val_mni
 acc_fit_all = clf_all.score(X_test_mnist, y_test_mnist)
 
 print(acc_fit_all, acc_fit_imp)
-
 
 
 # TODO: feature importance visualization - heatmap
@@ -61,11 +60,11 @@ print(acc_fit_all, acc_fit_imp)
 # show_images(filtered_mnist,1)
 
 
-
-
-'''
+"""
 Tests
-'''
+"""
+
+
 # Test errors
 def test_neofit_errors():
     """Test classifier type error when training the explainer"""
@@ -89,4 +88,3 @@ def test_neofit_params():
 if __name__ == "__main__":
     test_neofit_errors()
     test_neofit_params()
-

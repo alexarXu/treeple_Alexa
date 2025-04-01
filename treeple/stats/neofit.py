@@ -5,14 +5,14 @@ from sklearn.utils import shuffle
 from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
 
-
 from treeple import ObliqueRandomForestClassifier, PatchObliqueRandomForestClassifier
+
 
 class NeuroExplainableOptimalFIT:
     """
-    A feature important testing method for assessing feature importance in 
-    datasets using permutation testing with oblique random forest classifiers 
-    (MORF[1] or SPORF[2]). This method provides p-values for each feature to 
+    A feature important testing method for assessing feature importance in
+    datasets using permutation testing with oblique random forest classifiers
+    (MORF[1] or SPORF[2]). This method provides p-values for each feature to
     make it possible choosing the important features based on printed p-values.
 
     Parameters
@@ -47,7 +47,7 @@ class NeuroExplainableOptimalFIT:
 
     verbose : int, default=1
         Controls the verbosity when fitting and predicting.
-        
+
     n_permutations : int, default=5000
         Number of permutations to use for the test.
 
@@ -94,15 +94,15 @@ class NeuroExplainableOptimalFIT:
     """
 
     def __init__(
-            self,
-            n_estimators=100,
-            max_features="sqrt",
-            n_jobs=-1,
-            random_state=None,
-            verbose=1,
-            n_permutations=5000,
-            clf_type="SPORF",
-            alpha=0.05,
+        self,
+        n_estimators=100,
+        max_features="sqrt",
+        n_jobs=-1,
+        random_state=None,
+        verbose=1,
+        n_permutations=5000,
+        clf_type="SPORF",
+        alpha=0.05,
     ):
         self.n_estimators = n_estimators
         self.max_features = max_features
@@ -113,13 +113,11 @@ class NeuroExplainableOptimalFIT:
         self.clf_type = clf_type
         self.alpha = alpha
 
-
-
     def construct_orf(self, random_state=None):
         """
         Construct the estimator based on the type chose in the params.
 
-        
+
         """
         if self.clf_type == "MORF":
             return PatchObliqueRandomForestClassifier(
@@ -145,8 +143,6 @@ class NeuroExplainableOptimalFIT:
             )
         else:
             raise ValueError(f"Classifier type {self.clf_type} not implemented yet.")
-    
-
 
     def train(self, ii, X, y):
         """
@@ -158,7 +154,7 @@ class NeuroExplainableOptimalFIT:
         ii: int
             The random seed.
         X: array-like of shape (n_samples, n_features)
-            The training input samples. 
+            The training input samples.
         y: array-like of shape (n_samples,)
             The target values. In classification problems, it should be class labels.
 
@@ -169,28 +165,28 @@ class NeuroExplainableOptimalFIT:
             feature_importance: array-like of shape (n_features,)
                 The feature importance values for all the input features in training set.
             padded_oob_decisions: array-like of shape (n_samples, n_classes)
-                The OOB decisions. 
+                The OOB decisions.
         """
         rng = np.random.default_rng(ii if self.random_state is None else self.random_state + ii)
-        bootstrap_idx = rng.choice(len(X), size=len(X), replace=True) # make sure the bootstrap strategy is the consistent
-        
+        bootstrap_idx = rng.choice(
+            len(X), size=len(X), replace=True
+        )  # make sure the bootstrap strategy is the consistent
+
         orf = self.construct_orf(random_state=ii)
         orf.fit(X[bootstrap_idx, :], y[bootstrap_idx])
         oob_idx = np.setdiff1d(np.arange(len(y)), bootstrap_idx)
         oob_decisions = orf.predict_proba(X[oob_idx, :])
         padded_oob_decisions = np.zeros((len(y), oob_decisions.shape[1]))
         padded_oob_decisions[oob_idx, :] = oob_decisions
-        
-        return orf.feature_importances_, padded_oob_decisions
-  
 
+        return orf.feature_importances_, padded_oob_decisions
 
     @staticmethod
     def compute_ranks(feature_importance):
         """
-        Precompute ranks of features. 
+        Precompute ranks of features.
         The rank from top to the bottom will be from most important to the least important.
-        
+
         Parameters:
         -----------
         feature_importance: array-like of shape (n_samples, n_features)
@@ -201,9 +197,9 @@ class NeuroExplainableOptimalFIT:
         ranks: array-like of shape (n_samples, n_features)
             The ranks of the feature importance.
         """
-        return np.apply_along_axis(lambda x: ss.rankdata(1 - x, method='max'), axis=1, arr=feature_importance)
-
-
+        return np.apply_along_axis(
+            lambda x: ss.rankdata(1 - x, method="max"), axis=1, arr=feature_importance
+        )
 
     def statistics(self, ranks, idx):
         """
@@ -223,16 +219,14 @@ class NeuroExplainableOptimalFIT:
             The feature importance test statistic.
         """
         stat = np.zeros(ranks.shape[1])
-        
+
         for ii in range(self.n_estimators):
             r = ranks[idx[ii]]
             r_0 = ranks[idx[self.n_estimators + ii]]
             stat += (r_0 > r) * 1  # Boolean Comparison
-            
+
         stat /= self.n_estimators
         return stat
-
-
 
     def perm_stat(self, ranks):
         """
@@ -252,8 +246,6 @@ class NeuroExplainableOptimalFIT:
         idx = rng.permutation(2 * self.n_estimators)
         return self.statistics(ranks, idx)
 
-
-
     def test(self, feature_importance):
         """
         Permutation test to compare real vs shuffled feature importance.
@@ -263,13 +255,13 @@ class NeuroExplainableOptimalFIT:
         feature_importance: array-like of shape (n_samples, n_features)
             The feature importance.
         n_permutations: int
-            The number of permutations. Ref to Coleman et al. [3] 
-            
+            The number of permutations. Ref to Coleman et al. [3]
+
         Returns:
         --------
         tuple
             (stat, p_val): The test statistic and p-values.
-            
+
         Reference:
         ----------
         [3] Coleman, T., et al. "Distributed, partial feature ranking using sparse oblique trees." ,/
@@ -282,26 +274,27 @@ class NeuroExplainableOptimalFIT:
         stat = self.statistics(ranks, np.arange(2 * self.n_estimators))
 
         # Parallel computation of null distribution
-        null_stat = np.array(Parallel(n_jobs=self.n_jobs)(
-            delayed(self.perm_stat)(ranks)
-            for _ in tqdm(range(self.n_permutations), 
-                          desc="Calculating null distribution",
-                          disable=not self.verbose)
-        ))
+        null_stat = np.array(
+            Parallel(n_jobs=self.n_jobs)(
+                delayed(self.perm_stat)(ranks)
+                for _ in tqdm(
+                    range(self.n_permutations),
+                    desc="Calculating null distribution",
+                    disable=not self.verbose,
+                )
+            )
+        )
 
         # Compute p-values
         count = np.sum(null_stat >= stat, axis=0)
         p_val = (1 + count) / (1 + self.n_permutations)
 
         return stat, p_val
- 
-
-
 
     def get_p(self, feat_imp_all, feat_imp_all_rand):
         """
         Calculate p-values with multiple testing correction.
-        
+
         Parameters:
         -----------
         feat_imp_all: array-like of shape (n_estimators, n_features)
@@ -309,34 +302,29 @@ class NeuroExplainableOptimalFIT:
 
         feat_imp_all_rand: array-like of shape (n_estimators, n_features)
             Feature importance from shuffled data.
-            
+
         Returns:
         --------
         p_corrected: array-like of shape (n_features,)
             Corrected p-values.
         """
-        _, p = self.test(
-            np.concatenate((feat_imp_all, feat_imp_all_rand))
-        )
+        _, p = self.test(np.concatenate((feat_imp_all, feat_imp_all_rand)))
 
         # Apply Bonferroni-Holm correction
         p_corrected = multipletests(p, method="holm")[1]
         return p_corrected
-  
-
-
 
     def feat_imp_test(self, X, y):
         """
         Main method to test for significant features.
-        
+
         Parameters:
         -----------
         X : array-like of shape (n_samples, n_features)
             The training input samples.
         y : array-like of shape (n_samples,)
             The target values.
-            
+
         Returns:
         --------
         p_corrected : array-like of shape (n_features,)
@@ -348,7 +336,7 @@ class NeuroExplainableOptimalFIT:
             delayed(self.train)(ii, X, y) for ii in tqdm(range(self.n_estimators))
         )
         feat_imp_all, _ = zip(*results)
-        
+
         # Training on shuffled data
         print(f"Training forest with {self.n_estimators} trees on shuffled data...")
         y_shuffled = shuffle(y, random_state=0)
@@ -356,27 +344,24 @@ class NeuroExplainableOptimalFIT:
             delayed(self.train)(ii, X, y_shuffled) for ii in tqdm(range(self.n_estimators))
         )
         feat_imp_all_rand, _ = zip(*results)
-        
+
         # Computing p-values
         print(f"Computing p-values with {self.n_permutations} permutations...")
         p_corrected = self.get_p(np.array(feat_imp_all), np.array(feat_imp_all_rand))
-        
+
         return p_corrected
-    
 
-
-
-    def get_significant_features(self, X, y ):
+    def get_significant_features(self, X, y):
         """
         Find significant features (p < alpha) and return their indices.
-        
+
         Parameters:
         -----------
         X : array-like of shape (n_samples, n_features)
             The training input samples.
         y : array-like of shape (n_samples,)
             The target values.
-            
+
         Returns:
         --------
         significant_features : array-like
@@ -388,8 +373,10 @@ class NeuroExplainableOptimalFIT:
         """
         p_values = self.feat_imp_test(X, y)
         significant_features = p_values < self.alpha
-        
-        print(f"Found {np.sum(significant_features)} significant features out of {len(significant_features)}")
+
+        print(
+            f"Found {np.sum(significant_features)} significant features out of {len(significant_features)}"
+        )
         X_important = X[:, significant_features]
 
         return p_values, significant_features, X_important
