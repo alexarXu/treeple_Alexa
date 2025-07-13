@@ -5,7 +5,7 @@ from sklearn.utils import shuffle
 from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
 
-from ..ensemble._supervised_forest import( 
+from ..ensemble._supervised_forest import (
     ObliqueRandomForestClassifier,
     PatchObliqueRandomForestClassifier,
 )
