@@ -5,7 +5,10 @@ from sklearn.utils import shuffle
 from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
 
-from treeple import ObliqueRandomForestClassifier, PatchObliqueRandomForestClassifier
+from ..ensemble._supervised_forest import( 
+    ObliqueRandomForestClassifier,
+    PatchObliqueRandomForestClassifier,
+)
 
 
 class NeuroExplainableOptimalFIT:
@@ -71,7 +74,7 @@ class NeuroExplainableOptimalFIT:
 
     Reference:
     ----------
-    [1] Li, Haoyin, et al. "Manifold Oblique Random Forests.",/
+    [1] Adam Li, Haoyin Xu, et al. "Manifold Oblique Random Forests.",/
       IEEE Transactions on Neural Networks and Learning Systems, 2023.
     [2] Tomita, Tyler M., et al. "Sparse Projection Oblique Randomer Forests.",/
       Journal of Machine Learning Research, 21(104), 1-39, 2020.
@@ -90,7 +93,7 @@ class NeuroExplainableOptimalFIT:
     ...         alpha = 0.05,
     ...         verbose = 1)
     >>> p_values = neofit.feat_imp_test(X, y)
-    >>> print(p_values)
+    >>> p_values, important_features, X_important = neofit.get_significant_features(X, y)
     """
 
     def __init__(
