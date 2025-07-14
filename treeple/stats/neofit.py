@@ -3,7 +3,6 @@ from joblib import Parallel, delayed
 from scipy import stats as ss
 from sklearn.utils import shuffle
 from statsmodels.stats.multitest import multipletests
-from tqdm import tqdm
 
 from ..ensemble._supervised_forest import (
     ObliqueRandomForestClassifier,
@@ -279,8 +278,7 @@ class NeuroExplainableOptimalFIT:
         # Parallel computation of null distribution
         null_stat = np.array(
             Parallel(n_jobs=self.n_jobs)(
-                delayed(self.perm_stat)(ranks)
-                for _ in range(self.n_permutations)
+                delayed(self.perm_stat)(ranks) for _ in range(self.n_permutations)
             )
         )
 
