@@ -280,11 +280,7 @@ class NeuroExplainableOptimalFIT:
         null_stat = np.array(
             Parallel(n_jobs=self.n_jobs)(
                 delayed(self.perm_stat)(ranks)
-                for _ in tqdm(
-                    range(self.n_permutations),
-                    desc="Calculating null distribution",
-                    disable=not self.verbose,
-                )
+                for _ in range(self.n_permutations)
             )
         )
 
@@ -334,22 +330,19 @@ class NeuroExplainableOptimalFIT:
             Corrected p-values for each feature.
         """
         # Training on original data
-        print(f"Training forest with {self.n_estimators} trees on original data...")
         results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.train)(ii, X, y) for ii in tqdm(range(self.n_estimators))
+            delayed(self.train)(ii, X, y) for ii in range(self.n_estimators)
         )
         feat_imp_all, _ = zip(*results)
 
         # Training on shuffled data
-        print(f"Training forest with {self.n_estimators} trees on shuffled data...")
         y_shuffled = shuffle(y, random_state=0)
         results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.train)(ii, X, y_shuffled) for ii in tqdm(range(self.n_estimators))
+            delayed(self.train)(ii, X, y_shuffled) for ii in range(self.n_estimators)
         )
         feat_imp_all_rand, _ = zip(*results)
 
         # Computing p-values
-        print(f"Computing p-values with {self.n_permutations} permutations...")
         p_corrected = self.get_p(np.array(feat_imp_all), np.array(feat_imp_all_rand))
 
         return p_corrected
@@ -380,6 +373,15 @@ class NeuroExplainableOptimalFIT:
         print(
             f"Found {np.sum(significant_features)} significant features out of {len(significant_features)}"
         )
-        X_important = X[:, significant_features]
+        # print the top 10 features: name, index
+        if X.shape[1] > 1:
+            print(f"Significant features: {np.where(significant_features)[0][:10]}")
+        else:
+            print(f"Significant feature: {np.where(significant_features)[0][:10]}")
+
+        if np.sum(significant_features) > 0:
+            X_important = X[:, significant_features]
+        else:
+            X_important = X
 
         return p_values, significant_features, X_important
